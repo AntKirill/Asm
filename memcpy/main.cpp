@@ -27,9 +27,9 @@ void* memcpy_8(void* dest, const void* src, size_t count) {
         size_t tmp = 0;
         __asm__ volatile(
         "mov %1, %0\n\t"
-        "mov %0, %2"
+        "mov %0, %2\n\t"
         :
-        : "r"(tmp), "r"((const char*)src + p), "r" ((char*)dest + p));
+        : "r"(tmp), "r"(s + p), "r" (d + p));
     }
     for (; p < count; p++) d[p] = s[p];
     return dest;
@@ -71,13 +71,8 @@ double check_time(F f, char *to, char *from, size_t count) {
     return std::chrono::duration <double, std::milli> (t).count();
 }
 
-void show(char *a, size_t n) {
-    for (size_t i = 0; i < n; i++) std::cout << a[i];
-    std::cout << std::endl;
-}
-
 void test() {
-    const int amount = 100;
+    const int amount = 1000;
     const size_t MAXN = (size_t) 1e6;
     auto * from = new char[MAXN];
     auto * to = new char[MAXN];
