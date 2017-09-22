@@ -1,6 +1,7 @@
 #include <iostream>
 #include <chrono>
 #include <xmmintrin.h>
+#include <random>
 
 void* easy_memcpy( void* dest, const void* src, std::size_t count ) {
     auto * d = reinterpret_cast<char*>(dest);
@@ -71,21 +72,31 @@ double check_time(F f, char *to, char *from, size_t count) {
     return std::chrono::duration <double, std::milli> (t).count();
 }
 
-void test() {
+char gen_letter() {
+    return char ('a' + ((int) random()) % 26);
+}
+
+bool test() {
     const int amount = 1000;
     const size_t MAXN = (size_t) 1e6;
     auto * from = new char[MAXN];
     auto * to = new char[MAXN];
 
     std::cout.precision(6);
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, 26);
+    std::uniform_real_distribution<> num_dis(0, MAXN);
+    auto gl = &gen_letter;
+
     for (int j = 0; j < amount; j++) {
 
-        size_t n = 1 + ((size_t) random()) % MAXN;
+        size_t n = (size_t) num_dis(gen);
         srand(time(0));
-        auto gen_letter = []() -> char {return (char) ('a' + (rand() % 26));};
-        auto fill_arrays = [from, to, n, gen_letter]() {
+        auto fill_arrays = [from, to, n, gl]() {
             for (size_t i = 0; i < n; i++) {
-                from[i] = gen_letter();
+                from[i] = gl();
                 to[i] = '0';
             }
         };
@@ -93,20 +104,33 @@ void test() {
             for (size_t i = 0; i < n; i++) std::cout << a[i];
             std::cout << std::endl;
         };
+        auto check = [to, from, n]() -> bool {
+            for (size_t i = 0; i < n; i++) if (to[i] != from[i]) return false;
+            return true;
+        };
 
         fill_arrays();
         double t1 = check_time(easy_memcpy, to, from, n);
         fill_arrays();
+//        show(from);
         double t2 = check_time(memcpy_16, to, from, n);
+//        show(to);
+        if (!check()) return false;
 
         std::cout << "speed up: " << std::fixed << t1/t2 << std::endl;
     }
 
     delete(from);
     delete(to);
+    return true;
 }
 
 int main() {
-    test();
+    bool ok = test();
+    if (!ok) {
+        std::cout << "FAILED!" << std::endl;
+    } else {
+        std::cout << "OK" << std::endl;
+    }
     return 0;
 }
