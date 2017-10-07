@@ -21,16 +21,16 @@ void* memcpy_8(void* dest, const void* src, size_t count) {
     auto * d = reinterpret_cast<char*>(dest);
     auto * s = reinterpret_cast<const char*>(src);
 
-    size_t p = align(d, s, count);
-    size_t tail = (count - p) % 8;
+    size_t p = 0;
+    size_t tail = count  % 8;
 
     for (; p < count - tail; p += 8) {
-        size_t tmp = 0;
-        __asm__ volatile(
+        uint64_t reg = 0;
+        asm volatile (
+        "mov %2, %1\n\t"
         "mov %1, %0\n\t"
-        "mov %0, %2\n\t"
-        :
-        : "r"(tmp), "r"(s + p), "r" (d + p));
+        : "=r" (d)
+        : "r" (reg), "r" (s + p), "r" (d + p));
     }
     for (; p < count; p++) d[p] = s[p];
     return dest;
@@ -47,8 +47,8 @@ void* memcpy_16(void* dest, void const* src, size_t count) {
     d += p;
     for (size_t i = p; i < count - tail; i += 16) {
         __m128i reg;
-        asm (
-        "movdqu (%1), %0\n\t"
+        asm volatile (
+        "movdqa (%1), %0\n\t"
         "movntdq %0, (%2)\n\t"
         "add $16, %1\n\t"
         "add $16, %2\n\t"
@@ -72,12 +72,8 @@ double check_time(F f, char *to, char *from, size_t count) {
     return std::chrono::duration <double, std::milli> (t).count();
 }
 
-char gen_letter() {
-    return char ('a' + ((int) random()) % 26);
-}
-
 bool test() {
-    const int amount = 1000;
+    const int amount = 60;
     const size_t MAXN = (size_t) 1e6;
     auto * from = new char[MAXN];
     auto * to = new char[MAXN];
@@ -86,13 +82,15 @@ bool test() {
 
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, 26);
-    std::uniform_real_distribution<> num_dis(0, MAXN);
-    auto gl = &gen_letter;
+    std::uniform_int_distribution<> dis(0, 25);
+    std::uniform_real_distribution<> num_dis(0, MAXN - 1);
+    auto gl = [&gen, &dis]() -> char {
+        return static_cast<char>('a' + (int) dis(gen));
+    };
 
     for (int j = 0; j < amount; j++) {
 
-        size_t n = (size_t) num_dis(gen);
+        auto n = (size_t) num_dis(gen);
         srand(time(0));
         auto fill_arrays = [from, to, n, gl]() {
             for (size_t i = 0; i < n; i++) {
