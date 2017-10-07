@@ -7,11 +7,28 @@
 #include "arguments.h"
 
 static char *pcode;
+static void** ptr = nullptr;
 
 static void *alloc() 
 {
     void *mem = mmap(nullptr, 4096, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    ptr = (void **) mem;
+    for (auto i = 0; i < 4096; i += 123) {
+        auto cur = (char *)mem + i;
+        *(void **)cur = 0;
+        if (i != 0) *(void **)(cur - 123) = cur;
+    }
     return mem;
+}
+
+
+static void* get_next() {
+    if (ptr == nullptr) {
+        alloc();
+    }
+    void *ans = ptr;
+    ptr = (void**)*ptr;
+    return ans;
 }
 
 static void push_bytecom(std::string const& command) 
@@ -34,7 +51,7 @@ trampoline<T (Args ...)>::trampoline(F func)
 {
     func_obj = new F(std::move(func));
     deleter = do_delete<F>;
-    code = alloc();
+    code = get_next();
     pcode = (char *)code;
 
     int stack_size = 8 * (arguments<Args ...>::INTEGER - 5 + std::max(arguments<Args ...>::SSE - 8, 0));
