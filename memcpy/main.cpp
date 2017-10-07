@@ -17,25 +17,6 @@ size_t align(char *d, const char *s, size_t count) {
     return p;
 }
 
-void* memcpy_8(void* dest, const void* src, size_t count) {
-    auto * d = reinterpret_cast<char*>(dest);
-    auto * s = reinterpret_cast<const char*>(src);
-
-    size_t p = 0;
-    size_t tail = count  % 8;
-
-    for (; p < count - tail; p += 8) {
-        uint64_t reg = 0;
-        asm volatile (
-        "mov %2, %1\n\t"
-        "mov %1, %0\n\t"
-        : "=r" (d)
-        : "r" (reg), "r" (s + p), "r" (d + p));
-    }
-    for (; p < count; p++) d[p] = s[p];
-    return dest;
-}
-
 void* memcpy_16(void* dest, void const* src, size_t count) {
     auto * d = reinterpret_cast<char*>(dest);
     auto * s = reinterpret_cast<const char*>(src);
