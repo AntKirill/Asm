@@ -2,6 +2,10 @@
 #define TRAMPOLINE_TRAMPOLINE_H
 
 #include <iostream>
+#include "trampoline.h"
+#include <sys/mman.h>
+#include <iostream>
+#include "arguments.h"
 
 template <typename T>
 struct trampoline
@@ -47,6 +51,10 @@ private:
     {
         delete static_cast<F*>(func_obj);
     }
+
+    void *alloc();
+
+    void* get_next();
 
     void* func_obj;
     void* code;

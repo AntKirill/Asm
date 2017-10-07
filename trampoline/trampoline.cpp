@@ -7,29 +7,6 @@
 #include "arguments.h"
 
 static char *pcode;
-static void** ptr = nullptr;
-
-static void *alloc() 
-{
-    void *mem = mmap(nullptr, 4096, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    ptr = (void **) mem;
-    for (auto i = 0; i < 4096; i += 123) {
-        auto cur = (char *)mem + i;
-        *(void **)cur = 0;
-        if (i != 0) *(void **)(cur - 123) = cur;
-    }
-    return ptr;
-}
-
-
-static void* get_next() {
-    if (ptr == nullptr) {
-        alloc();
-    }
-    void *ans = ptr;
-    ptr = (void**)*ptr;
-    return ans;
-}
 
 static void push_bytecom(std::string const& command) 
 {
@@ -43,6 +20,29 @@ static void displ_regs(int cnt)
 	        "\x4d\x89\xc1" /*mov r9 r8;*/, "\x41\x51"     /*push %%r9;*/
 	};
 	for (int i = cnt; i >= 0; i--) push_bytecom(mov[i]);
+}
+
+template <typename T, typename ... Args>
+void *trampoline<T (Args ...)>::alloc() 
+{
+    void *mem = mmap(nullptr, 4096, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    ptr = (void **) mem;
+    for (auto i = 0; i < 4096; i += 150) {
+        auto cur = (char *)mem + i;
+        *(void **)cur = 0;
+        if (i != 0) *(void **)(cur - 150) = cur;
+    }
+    return ptr;
+}
+
+template <typename T, typename ... Args>
+void *trampoline<T (Args ...)>::get_next() {
+    if (ptr == nullptr) {
+        alloc();
+    }
+    void *ans = ptr;
+    ptr = (void**)*ptr;
+    return ans;
 }
 
 template <typename T, typename ... Args>
