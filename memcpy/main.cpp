@@ -37,7 +37,6 @@ void* memcpy_16(void* dest, void const* src, size_t count) {
         : "1" (s), "2" (d)
         : "memory");
     }
-    _mm_sfence();
 
     for (size_t i = 0; i < tail; i++) d[i] = s[i];
 
