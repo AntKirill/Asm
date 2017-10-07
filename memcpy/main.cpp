@@ -29,7 +29,7 @@ void* memcpy_16(void* dest, void const* src, size_t count) {
     for (size_t i = p; i < count - tail; i += 16) {
         __m128i reg;
         asm volatile (
-        "movdqa (%1), %0\n\t"
+        "movdqu (%1), %0\n\t"
         "movntdq %0, (%2)\n\t"
         "add $16, %1\n\t"
         "add $16, %2\n\t"
