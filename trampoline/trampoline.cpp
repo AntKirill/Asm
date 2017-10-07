@@ -18,7 +18,7 @@ static void *alloc()
         *(void **)cur = 0;
         if (i != 0) *(void **)(cur - 123) = cur;
     }
-    return mem;
+    return ptr;
 }
 
 
