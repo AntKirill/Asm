@@ -39,8 +39,7 @@ size_t word_count_fast(const char *str, size_t size) {
     __m128i prv_store = prv_space ? all_ff : all_zeros;
     for (; p != str + size - rest; p += 16) {
         __m128i store = _mm_cmpeq_epi8(_mm_load_si128(reinterpret_cast<const __m128i *>(p)), all_spaces);
-        __m128i word_mask = _mm_and_si128(_mm_xor_si128(all_ff, store), _mm_alignr_epi8(store, prv_store, 15));
-
+        __m128i word_mask = _mm_andnot_si128(store, _mm_alignr_epi8(store, prv_store, 15));
         cnt += popcnt128(word_mask) / 8;
         prv_store = store;
     }
