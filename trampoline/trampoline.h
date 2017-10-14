@@ -34,6 +34,7 @@ struct trampoline<T (Args ...)>
 
     ~trampoline() {
         if (func_obj) deleter(func_obj);
+        free_ptr(code);
     }
 
 private:
@@ -55,6 +56,8 @@ private:
     void *alloc();
 
     void* get_next();
+
+    void free_ptr(void*);
 
     void* func_obj;
     void* code;

@@ -46,6 +46,12 @@ void *trampoline<T (Args ...)>::get_next() {
 }
 
 template <typename T, typename ... Args>
+void trampoline<T (Args ...)>::free_ptr(void *old_ptr) {
+    *(void **) old_ptr = ptr;
+    ptr = (void **) old_ptr;
+}
+
+template <typename T, typename ... Args>
 template <typename F>
 trampoline<T (Args ...)>::trampoline(F func) 
 {
