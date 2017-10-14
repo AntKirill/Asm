@@ -2,22 +2,9 @@
 #define TRAMPOLINE_TRAMPOLINE_H
 
 #include <iostream>
-#include "trampoline.h"
-#include <sys/mman.h>
-#include <iostream>
-#include "arguments.h"
 
 template <typename T>
-struct trampoline
-{
-    template <typename F>
-    trampoline(F func)
-    {}
-    
-    ~trampoline();
-    
-    T* get() const;
-};
+struct trampoline;
 
 template <typename T, typename ... Args>
 struct trampoline<T (Args ...)> 
@@ -32,35 +19,19 @@ struct trampoline<T (Args ...)>
         return (T(*)(Args ... args))code;
     }
 
-    ~trampoline() {
-        if (func_obj) deleter(func_obj);
-        free_ptr(code);
-    }
+    ~trampoline();
 
 private:
-
-    void **ptr = nullptr;
-
     template <typename F>
     static T do_call(void* obj, Args ...args) 
     {
         return  (*static_cast<F*>(obj))(std::forward<Args>(args)...);
     }
-
-    template <typename F>
-    static void do_delete(void* func_obj) 
-    {
-        delete static_cast<F*>(func_obj);
-    }
-
-    void *alloc();
-
-    void* get_next();
-
-    void free_ptr(void*);
-
+    
     void* func_obj;
+
     void* code;
+
     void (*deleter)(void*);
 
 };

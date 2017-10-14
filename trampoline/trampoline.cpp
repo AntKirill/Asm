@@ -8,12 +8,46 @@
 
 static char *pcode;
 
-static void push_bytecom(std::string const& command) 
+static void **ptr = nullptr;
+
+static void *alloc() {
+    void *mem = mmap(nullptr, 4096, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    ptr = (void **) mem;
+    for (auto i = 0; i < 4096; i += 128) {
+        auto cur = (char *)mem + i;
+        *(void **)cur = 0;
+        if (i != 0) *(void **)(cur - 128) = cur;
+    }
+    return ptr;
+}
+
+static void* get_next() {
+    if (ptr == nullptr) {
+        alloc();
+    }
+    void *ans = ptr;
+    ptr = (void**)*ptr;
+    return ans;
+}
+
+static void free_ptr(void* old_ptr) {
+    *(void **) old_ptr = ptr;
+    ptr = (void **) old_ptr;    
+}
+
+template <typename F>
+static void do_delete(void* func_obj) 
+{
+    delete static_cast<F*>(func_obj);
+}
+
+
+static inline void push_bytecom(std::string const& command) 
 {
     for (const char *i = command.c_str(); i < command.c_str() + command.size(); i++) *(pcode++) = *i;
 }
 
-static void displ_regs(int cnt) 
+static inline void displ_regs(int cnt) 
 {
 	static const char* mov[6] = { "\x48\x89\xfe" /*mov rsi rdi*/, "\x48\x89\xf2" /*mov rdx rsi*/,
 	        "\x48\x89\xd1" /*mov rcx rdx*/, "\x49\x89\xc8" /*mov r8 rcx;*/,
@@ -23,33 +57,11 @@ static void displ_regs(int cnt)
 }
 
 template <typename T, typename ... Args>
-void *trampoline<T (Args ...)>::alloc() 
-{
-    void *mem = mmap(nullptr, 4096, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    ptr = (void **) mem;
-    for (auto i = 0; i < 4096; i += 150) {
-        auto cur = (char *)mem + i;
-        *(void **)cur = 0;
-        if (i != 0) *(void **)(cur - 150) = cur;
-    }
-    return ptr;
+trampoline<T (Args ...)>::~trampoline() {
+    if (func_obj) deleter(func_obj);
+    free_ptr(code);
 }
 
-template <typename T, typename ... Args>
-void *trampoline<T (Args ...)>::get_next() {
-    if (ptr == nullptr) {
-        alloc();
-    }
-    void *ans = ptr;
-    ptr = (void**)*ptr;
-    return ans;
-}
-
-template <typename T, typename ... Args>
-void trampoline<T (Args ...)>::free_ptr(void *old_ptr) {
-    *(void **) old_ptr = ptr;
-    ptr = (void **) old_ptr;
-}
 
 template <typename T, typename ... Args>
 template <typename F>
