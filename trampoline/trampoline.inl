@@ -5,56 +5,8 @@
 #include <sys/mman.h>
 #include <iostream>
 #include "arguments.h"
+#include "my_allocator.h"
 
-static char *pcode;
-
-static void **ptr = nullptr;
-
-static void *alloc() {
-    void *mem = mmap(nullptr, 4096, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    ptr = (void **) mem;
-    for (auto i = 0; i < 4096; i += 128) {
-        auto cur = (char *)mem + i;
-        *(void **)cur = 0;
-        if (i != 0) *(void **)(cur - 128) = cur;
-    }
-    return ptr;
-}
-
-static void* get_next() {
-    if (ptr == nullptr) {
-        alloc();
-    }
-    void *ans = ptr;
-    ptr = (void**)*ptr;
-    return ans;
-}
-
-static void free_ptr(void* old_ptr) {
-    *(void **) old_ptr = ptr;
-    ptr = (void **) old_ptr;    
-}
-
-template <typename F>
-static void do_delete(void* func_obj) 
-{
-    delete static_cast<F*>(func_obj);
-}
-
-
-static inline void push_bytecom(std::string const& command) 
-{
-    for (const char *i = command.c_str(); i < command.c_str() + command.size(); i++) *(pcode++) = *i;
-}
-
-static inline void displ_regs(int cnt) 
-{
-	static const char* mov[6] = { "\x48\x89\xfe" /*mov rsi rdi*/, "\x48\x89\xf2" /*mov rdx rsi*/,
-	        "\x48\x89\xd1" /*mov rcx rdx*/, "\x49\x89\xc8" /*mov r8 rcx;*/,
-	        "\x4d\x89\xc1" /*mov r9 r8;*/, "\x41\x51"     /*push %%r9;*/
-	};
-	for (int i = cnt; i >= 0; i--) push_bytecom(mov[i]);
-}
 
 template <typename T, typename ... Args>
 trampoline<T (Args ...)>::~trampoline() {
@@ -62,15 +14,30 @@ trampoline<T (Args ...)>::~trampoline() {
     free_ptr(code);
 }
 
-
 template <typename T, typename ... Args>
 template <typename F>
 trampoline<T (Args ...)>::trampoline(F func) 
 {
+    code = get_next();
+    char *pcode = (char *)code;
+    
+    auto push_bytecom = [&pcode](std::string const& command) 
+    {
+        for (const char *i = command.c_str(); i < command.c_str() + command.size(); i++) *(pcode++) = *i;
+    };
+
+    auto displ_regs = [push_bytecom](int cnt) 
+    {
+        static const char* mov[6] = { "\x48\x89\xfe" /*mov rsi rdi*/, "\x48\x89\xf2" /*mov rdx rsi*/,
+                "\x48\x89\xd1" /*mov rcx rdx*/, "\x49\x89\xc8" /*mov r8 rcx;*/,
+                "\x4d\x89\xc1" /*mov r9 r8;*/, "\x41\x51"     /*push %%r9;*/
+        };
+        for (int i = cnt; i >= 0; i--) push_bytecom(mov[i]);
+    };
+
+
     func_obj = new F(std::move(func));
     deleter = do_delete<F>;
-    code = get_next();
-    pcode = (char *)code;
 
     int stack_size = 8 * (arguments<Args ...>::INTEGER - 5 + std::max(arguments<Args ...>::SSE - 8, 0));
 

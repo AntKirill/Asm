@@ -27,7 +27,13 @@ private:
     {
         return  (*static_cast<F*>(obj))(std::forward<Args>(args)...);
     }
-    
+
+    template <typename F>
+    static void do_delete(void* func_obj) 
+    {
+        delete static_cast<F*>(func_obj);
+    }
+
     void* func_obj;
 
     void* code;
@@ -36,6 +42,6 @@ private:
 
 };
 
-#include "trampoline.cpp"
+#include "trampoline.inl"
 
 #endif //TRAMPOLINE_TRAMPOLINE_H
